@@ -1,7 +1,7 @@
 pipeline {
     agent any
     tools {
-        nodejs 'NodeJS 16'  // Si estás utilizando NodeJS, este es necesario
+        nodejs 'NodeJS 16'  // Si usas Node.js, asegúrate de que esta herramienta esté configurada en Jenkins
     }
 
     stages {
@@ -14,6 +14,7 @@ pipeline {
 
         stage("Build") {
             steps {
+                sh 'npm cache clean --force'
                 sh 'npm install'
             }
         }
@@ -21,15 +22,21 @@ pipeline {
         stage("Testing") {
             parallel {
                 stage("Unit Tests") {
-                    agent { docker { image 'openjdk:7-jdk-alpine' } }
                     steps {
-                        sh 'java -version'
+                        script {
+                            docker.image('openjdk:7-jdk-alpine').inside {
+                                sh 'java -version'
+                            }
+                        }
                     }
                 }
                 stage("Functional Tests") {
-                    agent { docker { image 'openjdk:8-jdk-alpine' } }
                     steps {
-                        sh 'java -version'
+                        script {
+                            docker.image('openjdk:8-jdk-alpine').inside {
+                                sh 'java -version'
+                            }
+                        }
                     }
                 }
                 stage("Integration Tests") {
