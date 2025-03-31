@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    
+    tools {
+        nodejs 'NodeJS 18'
+    }
 
     stages {
         stage('Checkout') {
@@ -7,9 +11,6 @@ pipeline {
                 git branch: 'feature/mejorar-documentacion', 
                     url: 'https://github.com/AitorGH13/testing-react-redux.git'
             }
-        }
-        tools {
-            nodejs 'NodeJS 18'
         }
         stage('Build') {
             steps {
