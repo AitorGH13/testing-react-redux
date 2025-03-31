@@ -14,7 +14,7 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'np outdated'
+                sh 'npm outdated'
                 sh 'npm update'
                 sh 'npm cache clean --force'
                 sh 'npm install --legacy-peer-deps'
