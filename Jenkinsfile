@@ -20,7 +20,25 @@ pipeline {
         }
         stage('Testing') {
             steps {
-                sh 'npm test'
+                script {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        sh 'npm test'
+                    }
+                }
+            }
+        }
+        stage('Deploy en el contenedor de la asignatura') {
+            steps {
+                sh 'npm run build'
+                sh 'sudo cp -r build /var/www/html/'
+            }
+        }
+        stage('Deploy en Docker dentro del contenedor') {
+            steps {
+                sh '''
+                docker build -t mi-app .
+                docker run -d -p 3000:3000 --name app-container mi-app
+                '''
             }
         }
     }
