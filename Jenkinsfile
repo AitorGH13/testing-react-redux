@@ -1,8 +1,7 @@
 pipeline {
     agent any
     tools {
-        nodejs 'NodeJS 16'
-        maven 'Maven 3.8.1'  // Si estás usando Maven en algún paso, por ejemplo
+        nodejs 'NodeJS 16'  // Si estás utilizando NodeJS, este es necesario
     }
 
     stages {
@@ -12,24 +11,23 @@ pipeline {
                     url: 'https://github.com/AitorGH13/testing-react-redux.git'
             }
         }
-        
+
         stage("Build") {
             steps {
                 sh 'npm install'
-                sh 'mvn -v'  // Esto es un ejemplo, si estás usando Maven
             }
         }
 
         stage("Testing") {
             parallel {
                 stage("Unit Tests") {
-                    agent { docker 'openjdk:7-jdk-alpine' }
+                    agent { docker { image 'openjdk:7-jdk-alpine' } }
                     steps {
                         sh 'java -version'
                     }
                 }
                 stage("Functional Tests") {
-                    agent { docker 'openjdk:8-jdk-alpine' }
+                    agent { docker { image 'openjdk:8-jdk-alpine' } }
                     steps {
                         sh 'java -version'
                     }
