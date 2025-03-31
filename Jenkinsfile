@@ -14,7 +14,8 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'npm install --force'
+                sh 'npm cache clean --force'
+                sh 'npm install --legacy-peer-deps'
             }
         }
         stage('Testing') {
