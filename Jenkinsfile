@@ -12,43 +12,14 @@ pipeline {
             }
         }
 
-        stage("Build") {
+        stage('Build') {
             steps {
                 sh 'npm install'
             }
         }
-
-        stage("Testing") {
-            parallel {
-                stage("Unit Tests") {
-                    steps {
-                        script {
-                            docker.image('openjdk:7-jdk-alpine').inside {
-                                sh 'java -version'
-                            }
-                        }
-                    }
-                }
-                stage("Functional Tests") {
-                    steps {
-                        script {
-                            docker.image('openjdk:8-jdk-alpine').inside {
-                                sh 'java -version'
-                            }
-                        }
-                    }
-                }
-                stage("Integration Tests") {
-                    steps {
-                        sh 'java -version'
-                    }
-                }
-            }
-        }
-
-        stage("Deploy") {
+        stage('Testing') {
             steps {
-                echo "Deploy!"
+                sh 'npm test'
             }
         }
     }
