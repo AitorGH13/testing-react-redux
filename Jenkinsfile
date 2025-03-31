@@ -8,6 +8,9 @@ pipeline {
                     url: 'https://github.com/AitorGH13/testing-react-redux.git'
             }
         }
+        tools {
+            nodejs 'NodeJS 18'
+        }
         stage('Build') {
             steps {
                 sh 'npm install'
