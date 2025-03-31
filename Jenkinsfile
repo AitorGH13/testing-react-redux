@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    tools {
-        nodejs 'NodeJS 16'  // Si usas Node.js, asegúrate de que esta herramienta esté configurada en Jenkins
-    }
 
     stages {
         stage("Checkout") {
