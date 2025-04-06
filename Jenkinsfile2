@@ -42,7 +42,7 @@ pipeline {
                     def filename = "hashes_${TIMESTAMP}.txt"
                     def ruta = "${env.JENKINS_HOME}/workspace/folderName/subfolderName/projectNameFile"
                     sh """
-                        find ${ruta} -type f -exec sha256sum {} \\; > ${file}
+                        find ${ruta} -type f -exec sha256sum {} \\; > ${filename}
                     """
                     // Guardar como artefacto descargable
                     archiveArtifacts artifacts: filename, fingerprint: true
