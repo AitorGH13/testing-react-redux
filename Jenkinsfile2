@@ -3,20 +3,31 @@ pipeline {
     stages {
         stage('Versiones') {
             steps {
-                withCredentials([usernamePassword(credentialsId: '1', usernameVariable: 'test', passwordVariable: 'test123')]) {
-                    sh '''
-                        timestamp=$(date +"%Y%m%d_%H%M%S")
-                        filename="versiones_${timestamp}.txt"
-                        
-                        echo "Java Version:" > "$filename"
-                        java -version 2>> "$filename"
-                        
-                        echo "\nJenkins Version:" >> "$filename"
-                        curl -u "$JENKINS_USER:$JENKINS_TOKEN" -s http://localhost:8081/api/json?pretty=true | grep version >> "$filename"
-                    '''
+                script {
+                    def timestamp = new Date().format("yyyyMMdd_HHmmss")
+                    def filename = "versiones_${timestamp}.txt"
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: '1',
+                            usernameVariable: 'JENKINS_USER',
+                            passwordVariable: 'JENKINS_TOKEN'
+                        )
+                    ]) {
+                        sh """
+                            echo "Java Version:" > ${filename}
+                            java -version 2>> ${filename}
+                            echo "\\nJenkins Version:" >> ${filename}
+                            curl -u "$JENKINS_USER:$JENKINS_TOKEN" -s http://localhost:8081/api/json?pretty=true | grep version >> ${filename}
+                        """
+                    }
+
+                    // Guardar como artefacto descargable
+                    archiveArtifacts artifacts: filename, fingerprint: true
                 }
             }
         }
     }
 }
+
 
