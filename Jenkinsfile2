@@ -13,8 +13,8 @@ pipeline {
                     withCredentials([
                         usernamePassword(
                             credentialsId: '1',
-                            usernameVariable: 'JENKINS_USER',
-                            passwordVariable: 'JENKINS_TOKEN'
+                            usernameVariable: 'test',
+                            passwordVariable: 'test123'
                         )
                     ]) {
                         sh """
