@@ -37,7 +37,7 @@ pipeline {
                     def ip = sh(script: "hostname -I | awk '{print \$1}'", returnStdout: true).trim()
                     sh """
                         echo "Puertos abiertos en la IP ${ip}:" > ${filename}
-                        ss -tuln | grep ${ip} >> ${filename}
+                        netstat -tuln | grep${ip} >> ${filename}
                     """
                 }
             }
