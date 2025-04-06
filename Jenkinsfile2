@@ -6,12 +6,14 @@ pipeline {
                 script {
                     def timestamp = new Date().format("yyyyMMdd_HHmmss")
                     def filename = "versiones_${timestamp}.txt"
-                    sh """
-                        echo "Java Version:" > ${filename}
-                        java -version 2>> ${filename}
-                        echo "\\nJenkins Version:" >> ${filename}
-                        curl -s http://localhost:8080/api/json?pretty=true | grep version >> ${filename}
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'jenkins-api', usernameVariable: 'aitor', passwordVariable: '110b5717f8f463893372858a18433c8153')]) {
+                        sh """
+                            echo "Java Version:" > ${filename}
+                            java -version 2>> ${filename}
+                            echo "\\nJenkins Version:" >> ${filename}
+                            curl -u $JENKINS_USER:$JENKINS_TOKEN -s http://localhost:8081/api/json?pretty=true | grep version >> ${filename}
+                        """
+                    }
                 }
             }
         }
