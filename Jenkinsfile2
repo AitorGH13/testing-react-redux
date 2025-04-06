@@ -1,0 +1,19 @@
+pipeline {
+    agent any
+    stages {
+        stage('Versiones') {
+            steps {
+                script {
+                    def timestamp = new Date().format("yyyyMMdd_HHmmss")
+                    def filename = "versiones_${timestamp}.txt"
+                    sh """
+                        echo "Java Version:" > ${filename}
+                        java -version 2>> ${filename}
+                        echo "\\nJenkins Version:" >> ${filename}
+                        curl -s http://localhost:8081/api/json?pretty=true | grep version >> ${filename}
+                    """
+                }
+            }
+        }
+    }
+}
