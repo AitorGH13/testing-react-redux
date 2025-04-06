@@ -40,7 +40,7 @@ pipeline {
             steps {
                 script {
                     def filename = "hashes_${TIMESTAMP}.txt"
-                    def ruta = "${env.JENKINS_HOME}/workspace/folderName/subfolderName/projectNameFile"
+                    def ruta = "${env.JENKINS_HOME}/workspace/getVersions/Jenkinsfile2"
                     sh """
                         find ${ruta} -type f -exec sha256sum {} \\; > ${filename}
                     """
