@@ -36,7 +36,8 @@ pipeline {
                     def file = "puertos_${TIMESTAMP}.txt"
                     def ip = sh(script: "hostname -I | awk '{print \$1}'", returnStdout: true).trim()
                     sh """
-                        nmap ${ip} -p- > ${file}
+                        echo "Puertos abiertos en la IP ${ip}:" > ${filename}
+                        ss -tuln | grep ${ip} >> ${filename}
                     """
                 }
             }
