@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    environment {
+        TIMESTAMP = new Date().format("yyyyMMdd_HHmmss")
+    }
     stages {
         stage('Versiones') {
             steps {
