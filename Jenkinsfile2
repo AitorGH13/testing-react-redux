@@ -10,7 +10,7 @@ pipeline {
                         echo "Java Version:" > ${filename}
                         java -version 2>> ${filename}
                         echo "\\nJenkins Version:" >> ${filename}
-                        curl -s http://localhost:8081/api/json?pretty=true | grep version >> ${filename}
+                        curl -s http://localhost:8080/api/json?pretty=true | grep version >> ${filename}
                     """
                 }
             }
