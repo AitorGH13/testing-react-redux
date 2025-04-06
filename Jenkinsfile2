@@ -30,6 +30,9 @@ pipeline {
                         echo "Puertos abiertos en la IP ${ip}:" > ${filename}
                         nmap ${ip} -p- >> ${filename}
                     """
+
+                    // Guardar como artefacto descargable
+                    archiveArtifacts artifacts: filename, fingerprint: true
                 }
             }
         }
