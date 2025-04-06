@@ -6,7 +6,7 @@ pipeline {
                 script {
                     def timestamp = new Date().format("yyyyMMdd_HHmmss")
                     def filename = "versiones_${timestamp}.txt"
-                    withCredentials([usernamePassword(credentialsId: 'jenkins-api', usernameVariable: 'aitor', passwordVariable: 'b36dab22949e3048a037fabf95ad8221')]) {
+                    withCredentials([usernamePassword(credentialsId: '1', usernameVariable: 'test', passwordVariable: 'test123')]) {
                         sh """
                             echo "Java Version:" > ${filename}
                             java -version 2>> ${filename}
