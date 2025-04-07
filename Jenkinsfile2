@@ -7,13 +7,12 @@ pipeline {
         stage('Versiones') {
             steps {
                 script {
-                    def timestamp = new Date().format("yyyyMMdd_HHmmss")
-                    def filename = "versiones_${timestamp}.txt"
+                    def filename = "versiones_${TIMESTAMP}.txt"
                     sh """
-                        echo "Java Version:" > ${filename}
+                        echo "Java Version:" >> ${filename}
                         java -version 2>> ${filename}
                         echo "\\nJenkins Version:" >> ${filename}
-                        curl -u aitor:110b5717f8f463893372858a18433c8153 -s http://localhost:8081/api/json?pretty=true | grep version >> ${filename} || true
+                        curl -I -s http://localhost:8081 | grep -i X-Jenkins >> ${filename} || true
                     """
 
                     // Guardar como artefacto descargable
