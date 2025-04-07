@@ -58,11 +58,14 @@ pipeline {
             }
             steps {
                 script {
+                    def filename = "comparacion_hashes.txt"
                     def actual = "hashes_${TIMESTAMP}.txt"
                     sh """
-                        echo "Comparación entre hashes_previo.txt y ${actual}:" > comparacion_hashes.txt
-                        diff hashes_previo.txt ${actual} >> comparacion_hashes.txt || echo "Cambios detectados"
+                        echo "Comparación entre hashes_previo.txt y ${actual}:" > ${filename}
+                        diff hashes_previo.txt ${actual} >> ${filename} || echo "Cambios detectados"
                     """
+                    // Guardar como artefacto descargable
+                    archiveArtifacts artifacts: filename, fingerprint: true
                 }
             }
         }
