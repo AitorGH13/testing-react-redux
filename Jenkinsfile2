@@ -49,6 +49,31 @@ pipeline {
                 }
             }
         }
+        stage('Comparación de Hashes (opcional)') {
+            when {
+                expression {
+                    // Solo ejecutar si hay un archivo anterior
+                    return fileExists("hashes_previo.txt")
+                }
+            }
+            steps {
+                script {
+                    def actual = "hashes_${TIMESTAMP}.txt"
+                    sh """
+                        echo "Comparación entre hashes_previo.txt y ${actual}:" > comparacion_hashes.txt
+                        diff hashes_previo.txt ${actual} >> comparacion_hashes.txt || echo "Cambios detectados"
+                    """
+                }
+            }
+        }
+
+    }
+
+    post {
+        always {
+            // Guardar el archivo actual como base para futura comparación
+            sh "cp hashes_${TIMESTAMP}.txt hashes_previo.txt"
+        }
     }
 }
 
