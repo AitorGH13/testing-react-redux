@@ -12,7 +12,7 @@ pipeline {
                         echo "Java Version:" >> ${filename}
                         java -version 2>> ${filename}
                         echo "\\nJenkins Version:" >> ${filename}
-                        curl -I -s http://localhost:8081 | grep -i X-Jenkins: >> ${filename}
+                        curl -I -s http://localhost:8081 | grep -i X-Jenkins: >> ${filename} || true
                     """
 
                     // Guardar como artefacto descargable
