@@ -1,8 +1,9 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs 'NodeJS 21'  // Si usas Node.js, asegúrate de que esta herramienta esté configurada en Jenkins
+    tools { nodejs 'NodeJS 21' }
+    environment {
+        PYTHON = '/usr/bin/python3'   // para que node-gyp lo detecte
     }
     
     stages {
