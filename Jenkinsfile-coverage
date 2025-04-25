@@ -1,42 +1,41 @@
 pipeline {
-  agent any
+  agent {
+    docker {
+      image 'maven:3.8.5-openjdk-11'
+      args  '-v /root/.m2:/root/.m2'  // cache local de repositorios
+    }
+  }
 
-  // Se ejecuta cada día a las 2:30 AM
   triggers {
     cron('30 2 * * *')
   }
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Build & Test') {
       steps {
-        // Asumiendo proyecto Maven; ajustar según entorno
+        // mvn ya existe dentro del contenedor
         sh 'mvn clean test jacoco:report'
       }
     }
 
     stage('Publish Coverage') {
       steps {
-        // Publica el informe HTML de JaCoCo
         publishHTML([
           reportDir: 'target/site/jacoco',
           reportFiles: 'index.html',
           reportName: 'JaCoCo Coverage',
           keepAll: true
         ])
-
-        // Extrae el coverage global del XML y lo imprime
         script {
           def xml = readFile 'target/site/jacoco/jacoco.xml'
-          def match = xml =~ /<counter type="INSTRUCTION" missed="(\d+)" covered="(\d+)"\/>/
-          if (match) {
-            def missed = match[0][1].toInteger()
-            def covered = match[0][2].toInteger()
+          def m = xml =~ /<counter type="INSTRUCTION" missed="(\d+)" covered="(\d+)"\/>/
+          if (m) {
+            def missed = m[0][1].toInteger()
+            def covered = m[0][2].toInteger()
             def pct = (covered / (missed + covered) * 100).round(2)
             echo "==> Coverage (instructions): ${pct}%"
           } else {
@@ -49,9 +48,9 @@ pipeline {
 
   post {
     always {
-      // Archivar resultados de test y cobertura
       junit 'target/surefire-reports/*.xml'
       archiveArtifacts artifacts: 'target/site/jacoco/**', fingerprint: true
     }
   }
 }
+
