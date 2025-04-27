@@ -1,3 +1,14 @@
+// Al principio del Jenkinsfile, antes de 'pipeline { ... }'
+@NonCPS
+def parseChurn(String stat) {
+  def m = stat =~ /(\d+) insertions.*?(\d+) deletions/
+  if (m) {
+    return [ m[0][1].toInteger(), m[0][2].toInteger() ]
+  } else {
+    return [0, 0]
+  }
+}
+
 pipeline {
   agent any
 
@@ -9,14 +20,11 @@ pipeline {
     stage('Calculate Code Churn') {
       steps {
         script {
+          // 1) sacamos la línea raw
           def stat = sh(script: 'git diff --shortstat HEAD~1 HEAD', returnStdout: true).trim()
-
-          // Extraer insertions y deletions con split y findAll
-          def nums = stat.split(',').collect { it.findAll(/\d+/)*.toInteger() }.flatten()
-          // nums será [filesChanged, insertions, deletions] o similar
-          def insertions = nums.size() > 1 ? nums[1] : 0
-          def deletions  = nums.size() > 2 ? nums[2] : 0
-
+          // 2) parseamos dentro de @NonCPS
+          def (insertions, deletions) = parseChurn(stat)
+          // 3) construimos el reporte
           def report = """\
           Code Churn Report
           =================
@@ -27,6 +35,7 @@ pipeline {
           Líneas borradas:  ${deletions}
           Total churn:       ${insertions + deletions}
           """
+          // 4) guardamos en disco y en consola
           writeFile file: 'churn.txt', text: report
           echo report
         }
