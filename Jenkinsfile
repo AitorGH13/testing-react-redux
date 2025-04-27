@@ -1,39 +1,49 @@
 pipeline {
-  agent any
+    // Usar contenedor Docker con Node.js y Python preinstalados
+    agent {
+        docker {
+            image 'node:18-buster'
+            args '--user root'
+        }
+    }
 
-  stages {
-    stage ('Build') {
-      steps {
-        echo '--- Checkout del código fuente ---'
-        checkout scm
+    stages {
+        stage('Build') {
+            when { branch 'feature' }
+            steps {
+                echo '--- Instalando dependencias del sistema ---'
+                sh 'apt-get update && apt-get install -y python2 build-essential'
 
-        echo '--- Instalando dependencias con npm ---'
-        sh 'npm install --legacy-peer-deeps'
+                echo '--- Checkout del código fuente ---'
+                checkout scm
 
-        echo '--- Compilando el proyecto con npm ---'
-        sh 'npm run build'
-      }
+                echo '--- Instalando dependencias con npm ---'
+                sh 'npm install'
+
+                echo '--- Compilando el proyecto con npm ---'
+                sh 'npm run build'
+            }
+        }
+
+        stage('Testing') {
+            when { branch 'feature' }
+            steps {
+                echo '--- Ejecutando pruebas con npm ---'
+                sh 'npm test'
+            }
+        }
     }
-    
-    stage('Testing') {
-      steps {
-        echo '--- Ejecutando pruebas con npm ---'
-        sh 'npm test'
-      }
+
+    post {
+        always {
+            echo '--- Archivando resultados de pruebas ---'
+            junit '**/test-results/*.xml'
+        }
+        success {
+            echo '### Build y tests correctos en rama feature'
+        }
+        failure {
+            echo '!!! Ha fallado el pipeline en rama feature'
+        }
     }
-  }
-  
-  post {
-    always {
-      echo '--- Archivando resultados de pruebas ---'
-      // Ajusta la ruta según tu configuración de reportes de pruebas
-      junit '**/test-results/*.xml'
-    }
-    success {
-      echo '### Build y tests correctos en rama feature'
-    }
-    failure {
-      echo '!!! Ha fallado el pipeline en rama feature'
-    }
-  }
 }
