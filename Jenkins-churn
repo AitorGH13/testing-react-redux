@@ -11,28 +11,38 @@ pipeline {
     stage('Calculate Code Churn') {
       steps {
         script {
-          // Compara la revisión anterior (HEAD~1) con la actual (HEAD)
+          // 1) Obtenemos la estadística de churn del último commit
           def stat = sh(
             script: "git diff --shortstat HEAD~1 HEAD",
             returnStdout: true
           ).trim()
 
-          // Mostramos la línea cruda
-          echo "=== Code Churn (último commit) ==="
-          echo stat
-
-          // Extraemos inserciones y borrados con regex
+          // 2) Extraemos insertions/deletions
           def matcher = stat =~ /(\d+) insertions.*?(\d+) deletions/
+          def insertions = 0
+          def deletions  = 0
           if (matcher) {
-            def insertions = matcher[0][1].toInteger()
-            def deletions  = matcher[0][2].toInteger()
-            def total      = insertions + deletions
-            echo "Líneas añadidas: ${insertions}"
-            echo "Líneas borradas:  ${deletions}"
-            echo "Code Churn total: ${total}"
-          } else {
-            echo "No se detectaron cambios (sin inserciones ni borrados)."
+            insertions = matcher[0][1].toInteger()
+            deletions  = matcher[0][2].toInteger()
           }
+
+          // 3) Construimos el contenido del reporte
+          def report = """\
+          Code Churn Report
+          =================
+
+          Raw stat: ${stat}
+
+          Líneas añadidas: ${insertions}
+          Líneas borradas:  ${deletions}
+          Code Churn total: ${insertions + deletions}
+          """
+
+          // 4) Lo escribimos en churn.txt
+          writeFile file: 'churn.txt', text: report
+
+          // 5) También lo mostramos por consola
+          echo report
         }
       }
     }
@@ -40,7 +50,7 @@ pipeline {
 
   post {
     always {
-      // Publicamos la métrica en los logs para histórico
+      // Archiva churn.txt para que aparezca en "Last Successful Artifacts"
       archiveArtifacts artifacts: 'churn.txt', fingerprint: true
     }
   }
