@@ -41,7 +41,7 @@ pipeline {
   post {
     always {
       // Publicamos la métrica en los logs para histórico
-      archiveArtifacts artifacts: '**/build.log', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'churn.txt', allowEmptyArchive: true
     }
   }
 }
