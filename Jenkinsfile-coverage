@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   tools {
-    nodejs 'Node14'   // asegúrate de tener configurado NodeJS con ese nombre
+    nodejs 'Node18'   // asegúrate de tener configurado NodeJS con ese nombre
   }
 
   triggers {
