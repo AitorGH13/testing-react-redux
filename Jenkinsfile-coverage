@@ -1,48 +1,42 @@
 pipeline {
   agent any
 
-  // Usa la instalación que acabas de crear
   tools {
-    nodejs 'Node14'
+    nodejs 'Node14'   // asegúrate de tener configurado NodeJS con ese nombre
   }
 
   triggers {
-    // Si quieres diario: 
-    cron('H 2 * * *')
+    cron('30 2 * * *')
   }
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Install Dependencies') {
       steps {
-        // npm ya está en PATH
         sh 'npm install'
       }
     }
 
     stage('Run Tests & Collect Coverage') {
       steps {
-        // Asume que en package.json tienes: "test:coverage": "jest --coverage --coverageReporters=lcov"
-        sh 'npm run test:coverage'
+        // Lanza Jest con cobertura y en modo no-watch
+        sh 'npm run test -- --coverage --watchAll=false'
       }
     }
 
     stage('Publish Coverage Report') {
       steps {
-        // Publica el informe LCOV generado por Jest
         publishHTML([
-          reportDir: 'coverage/lcov-report',
-          reportFiles: 'index.html',
-          reportName: 'Jest Coverage',
-          keepAll: true
+          reportDir   : 'coverage/lcov-report',
+          reportFiles : 'index.html',
+          reportName  : 'Jest Coverage',
+          keepAll     : true
         ])
-        // Opcional: extraer porcentaje de cobertura global
         script {
+          // Opcional: extraer % líneas cubiertas del summary JSON
           def summary = readFile 'coverage/coverage-summary.json'
           def json    = readJSON text: summary
           def pct     = json.total.lines.pct
@@ -54,10 +48,8 @@ pipeline {
 
   post {
     always {
-      // Archiva artefactos para histórico
+      // Archiva la carpeta de cobertura para histórico
       archiveArtifacts artifacts: 'coverage/**', fingerprint: true
-      // No habrá reports JUnit salvo que uses un transformador de Jest a JUnit
     }
   }
 }
-
