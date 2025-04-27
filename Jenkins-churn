@@ -3,30 +3,20 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Calculate Code Churn') {
       steps {
         script {
-          // 1) Obtenemos la estadística de churn del último commit
-          def stat = sh(
-            script: "git diff --shortstat HEAD~1 HEAD",
-            returnStdout: true
-          ).trim()
+          def stat = sh(script: 'git diff --shortstat HEAD~1 HEAD', returnStdout: true).trim()
 
-          // 2) Extraemos insertions/deletions
-          def matcher = stat =~ /(\d+) insertions.*?(\d+) deletions/
-          def insertions = 0
-          def deletions  = 0
-          if (matcher) {
-            insertions = matcher[0][1].toInteger()
-            deletions  = matcher[0][2].toInteger()
-          }
+          // Extraer insertions y deletions con split y findAll
+          def nums = stat.split(',').collect { it.findAll(/\d+/)*.toInteger() }.flatten()
+          // nums será [filesChanged, insertions, deletions] o similar
+          def insertions = nums.size() > 1 ? nums[1] : 0
+          def deletions  = nums.size() > 2 ? nums[2] : 0
 
-          // 3) Construimos el contenido del reporte
           def report = """\
           Code Churn Report
           =================
@@ -35,13 +25,9 @@ pipeline {
 
           Líneas añadidas: ${insertions}
           Líneas borradas:  ${deletions}
-          Code Churn total: ${insertions + deletions}
+          Total churn:       ${insertions + deletions}
           """
-
-          // 4) Lo escribimos en churn.txt
           writeFile file: 'churn.txt', text: report
-
-          // 5) También lo mostramos por consola
           echo report
         }
       }
@@ -50,7 +36,6 @@ pipeline {
 
   post {
     always {
-      // Archiva churn.txt para que aparezca en "Last Successful Artifacts"
       archiveArtifacts artifacts: 'churn.txt', fingerprint: true
     }
   }
