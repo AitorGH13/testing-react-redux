@@ -1,46 +1,51 @@
 pipeline {
-  agent {
-    docker {
-      image 'maven:3.8.5-openjdk-11'
-      args  '-v /root/.m2:/root/.m2'  // cache local de repositorios
-    }
+  agent any
+
+  // Usa la instalación que acabas de crear
+  tools {
+    nodejs 'Node14'
   }
 
   triggers {
-    cron('30 2 * * *')
+    // Si quieres diario: cron('H 2 * * *')
   }
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
-    }
-
-    stage('Build & Test') {
       steps {
-        // mvn ya existe dentro del contenedor
-        sh 'mvn clean test jacoco:report'
+        checkout scm
       }
     }
 
-    stage('Publish Coverage') {
+    stage('Install Dependencies') {
       steps {
+        // npm ya está en PATH
+        sh 'npm install'
+      }
+    }
+
+    stage('Run Tests & Collect Coverage') {
+      steps {
+        // Asume que en package.json tienes: "test:coverage": "jest --coverage --coverageReporters=lcov"
+        sh 'npm run test:coverage'
+      }
+    }
+
+    stage('Publish Coverage Report') {
+      steps {
+        // Publica el informe LCOV generado por Jest
         publishHTML([
-          reportDir: 'target/site/jacoco',
+          reportDir: 'coverage/lcov-report',
           reportFiles: 'index.html',
-          reportName: 'JaCoCo Coverage',
+          reportName: 'Jest Coverage',
           keepAll: true
         ])
+        // Opcional: extraer porcentaje de cobertura global
         script {
-          def xml = readFile 'target/site/jacoco/jacoco.xml'
-          def m = xml =~ /<counter type="INSTRUCTION" missed="(\d+)" covered="(\d+)"\/>/
-          if (m) {
-            def missed = m[0][1].toInteger()
-            def covered = m[0][2].toInteger()
-            def pct = (covered / (missed + covered) * 100).round(2)
-            echo "==> Coverage (instructions): ${pct}%"
-          } else {
-            error "No se pudo extraer coverage de jacoco.xml"
-          }
+          def summary = readFile 'coverage/coverage-summary.json'
+          def json    = readJSON text: summary
+          def pct     = json.total.lines.pct
+          echo "==> Coverage total de líneas: ${pct}%"
         }
       }
     }
@@ -48,8 +53,9 @@ pipeline {
 
   post {
     always {
-      junit 'target/surefire-reports/*.xml'
-      archiveArtifacts artifacts: 'target/site/jacoco/**', fingerprint: true
+      // Archiva artefactos para histórico
+      archiveArtifacts artifacts: 'coverage/**', fingerprint: true
+      // No habrá reports JUnit salvo que uses un transformador de Jest a JUnit
     }
   }
 }
