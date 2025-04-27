@@ -8,7 +8,7 @@ pipeline {
         checkout scm
 
         echo '--- Instalando dependencias con npm ---'
-        sh 'npm install'
+        sh 'npm install --legacy-peer-deeps'
 
         echo '--- Compilando el proyecto con npm ---'
         sh 'npm run build'
