@@ -7,10 +7,10 @@ pipeline {
 				echo 'Instalando dependencias de sistema...'
     				// Necesitas permisos sudo o estar en el grupo docker/ci
     				sh '''
-      					sudo apt-get update -y
-      					sudo apt-get install -y python3 python3-dev build-essential
+      					apt-get update -y
+      					apt-get install -y python3 python3-dev build-essential
       					# Para que node-gyp use python3 por defecto:
-      					sudo ln -sf /usr/bin/python3 /usr/bin/python
+      					ln -sf /usr/bin/python3 /usr/bin/python
     				'''
 				echo 'Instalando dependencias...'
 				sh 'npm install --legacy-peer-deps'
