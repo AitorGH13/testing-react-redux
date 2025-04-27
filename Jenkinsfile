@@ -21,19 +21,19 @@ pipeline {
         sh 'npm test'
       }
     }
-    
-    post {
-      always {
-        echo '--- Archivando resultados de pruebas ---'
-        // Ajusta la ruta según tu configuración de reportes de pruebas
-        junit '**/test-results/*.xml'
-      }
-      success {
-        echo '### Build y tests correctos en rama feature'
-      }
-      failure {
-        echo '!!! Ha fallado el pipeline en rama feature'
-      }
+  }
+  
+  post {
+    always {
+      echo '--- Archivando resultados de pruebas ---'
+      // Ajusta la ruta según tu configuración de reportes de pruebas
+      junit '**/test-results/*.xml'
+    }
+    success {
+      echo '### Build y tests correctos en rama feature'
+    }
+    failure {
+      echo '!!! Ha fallado el pipeline en rama feature'
     }
   }
 }
