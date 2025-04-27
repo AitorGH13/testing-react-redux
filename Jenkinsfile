@@ -1,40 +1,46 @@
 pipeline {
-    // Ejecutar en cualquier nodo disponible
+    // Ejecutar en cualquier nodo disponible que tenga sudo
     agent any
 
+    // Definir variables de entorno para node-gyp
+    environment {
+        PYTHON = '/usr/bin/python2'
+    }
+
     stages {
-        stage('Build') {
+        stage('Prepare') {
+            when { branch 'feature' }
             steps {
-                script {
-                    // Usar contenedor Docker para Node.js y Python
-                    def img = docker.image('node:18-buster')
-                    img.pull()
-                    img.inside('--user root') {
-                        echo '--- Instalando dependencias del sistema ---'
-                        sh 'apt-get update && apt-get install -y python2 build-essential'
+                echo '--- Instalando herramientas de compilación y Python2 ---'
+                // Requiere que el nodo Jenkins permita sudo sin contraseña
+                sh 'sudo apt-get update && sudo apt-get install -y python2 build-essential'
+            }
+        }
 
-                        echo '--- Checkout del código fuente ---'
-                        checkout scm
+        stage('Checkout') {
+            when { branch 'feature' }
+            steps {
+                echo '--- Checkout del código fuente ---'
+                checkout scm
+            }
+        }
 
-                        echo '--- Instalando dependencias con npm ---'
-                        sh 'npm install'
+        stage('Build') {
+            when { branch 'feature' }
+            steps {
+                echo '--- Instalando dependencias con npm ---'
+                sh 'npm install'
 
-                        echo '--- Compilando el proyecto con npm ---'
-                        sh 'npm run build'
-                    }
-                }
+                echo '--- Compilando el proyecto con npm ---'
+                sh 'npm run build'
             }
         }
 
         stage('Testing') {
+            when { branch 'feature' }
             steps {
-                script {
-                    // Ejecutar tests dentro del mismo contenedor
-                    docker.image('node:18-buster').inside('--user root') {
-                        echo '--- Ejecutando pruebas con npm ---'
-                        sh 'npm test'
-                    }
-                }
+                echo '--- Ejecutando pruebas con npm ---'
+                sh 'npm test'
             }
         }
     }
@@ -52,3 +58,4 @@ pipeline {
         }
     }
 }
+
