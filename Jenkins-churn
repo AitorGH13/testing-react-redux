@@ -12,6 +12,10 @@ def parseChurn(String stat) {
 pipeline {
   agent any
 
+  triggers {
+    cron('H 2 * * *')
+  }
+
   stages {
     stage('Checkout') {
       steps { checkout scm }
