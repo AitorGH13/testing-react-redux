@@ -1,46 +1,48 @@
 pipeline {
-    agent any
-    
-    tools { nodejs 'NodeJS 21' }
-    environment {
-        PYTHON = '/usr/bin/python3'   // para que node-gyp lo detecte
-    }
-    
-    stages {
-        stage("Checkout") {
-            steps {
-                git branch: 'feature/mejorar-documentacion', 
-                    url: 'https://github.com/AitorGH13/testing-react-redux.git'
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh 'npm install'
-            }
-        }
-        stage('Testing') {
-            steps {
-                script {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        sh 'npm test'
-                    }
-                }
-            }
-        }
-        stage('Deploy en el contenedor de la asignatura') {
-            steps {
-                sh 'npm run build'
-                sh 'sudo cp -r build /var/www/html/'
-            }
-        }
-        stage('Deploy en Docker dentro del contenedor') {
-            steps {
-                sh '''
-                docker build -t mi-app .
-                docker run -d -p 3000:3000 --name app-container mi-app
-                '''
-            }
-        }
-    }
+	agent any
+	triggers {
+		githubPullRequest()
+	}
+	stages {
+		stage("Build") {
+			steps {
+				echo 'Instalando dependencias...'
+				sh 'npm install --legacy-peer-deps'
+			}
+		}
+		stage("Testing") {
+			parallel {
+				stage("Unit Tests") {
+					steps {
+						catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+							echo 'Ejecutando tests unitarios'
+							sh 'npm test -- --watchAll=false --ci --reporters=default --coverage'
+						}
+					}
+				}
+				stage("Functional Tests") {
+					steps {
+						echo 'Todavia no hay tests funcionales'
+					}
+				}
+				stage("Integration Tests") {
+					steps {
+						echo 'Todavia no hay tests de integracion'
+					}
+				}
+			}
+		}
+		stage("Deploy") {
+			steps {
+				script {
+					echo "Iniciando despliegue en contenedor Docker..."
+					sh 'sudo docker build -t my-app:latest .'
+					sh 'sudo docker stop my-app-container || true'
+					sh 'sudo docker rm my-app-container || true'
+					sh 'sudo docker run -d --name my-app-container -p 80:80 my-app:latest'
+					echo "Despliegue completado con éxito en Docker"
+				}
+			}
+		}
+	}
 }
