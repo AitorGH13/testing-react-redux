@@ -1,46 +1,38 @@
 pipeline {
   agent any
 
-  tools {
-    nodejs 'Node18'   // asegúrate de tener configurado NodeJS con ese nombre
-  }
-
-  triggers {
-    cron('30 2 * * *')
-  }
-
   stages {
     stage('Checkout') {
-      steps { checkout scm }
-    }
-
-    stage('Install Dependencies') {
       steps {
-        sh 'npm install --legacy-peer-deps'
+        checkout scm
       }
     }
 
-    stage('Run Tests & Collect Coverage') {
+    stage('Calculate Code Churn') {
       steps {
-        // Lanza Jest con cobertura y en modo no-watch
-        sh 'npm run test -- --coverage --watchAll=false'
-      }
-    }
-
-    stage('Publish Coverage Report') {
-      steps {
-        publishHTML([
-          reportDir   : 'coverage/lcov-report',
-          reportFiles : 'index.html',
-          reportName  : 'Jest Coverage',
-          keepAll     : true
-        ])
         script {
-          // Opcional: extraer % líneas cubiertas del summary JSON
-          def summary = readFile 'coverage/coverage-summary.json'
-          def json    = readJSON text: summary
-          def pct     = json.total.lines.pct
-          echo "==> Coverage total de líneas: ${pct}%"
+          // Compara la revisión anterior (HEAD~1) con la actual (HEAD)
+          def stat = sh(
+            script: "git diff --shortstat HEAD~1 HEAD",
+            returnStdout: true
+          ).trim()
+
+          // Mostramos la línea cruda
+          echo "=== Code Churn (último commit) ==="
+          echo stat
+
+          // Extraemos inserciones y borrados con regex
+          def matcher = stat =~ /(\d+) insertions.*?(\d+) deletions/
+          if (matcher) {
+            def insertions = matcher[0][1].toInteger()
+            def deletions  = matcher[0][2].toInteger()
+            def total      = insertions + deletions
+            echo "Líneas añadidas: ${insertions}"
+            echo "Líneas borradas:  ${deletions}"
+            echo "Code Churn total: ${total}"
+          } else {
+            echo "No se detectaron cambios (sin inserciones ni borrados)."
+          }
         }
       }
     }
@@ -48,8 +40,9 @@ pipeline {
 
   post {
     always {
-      // Archiva la carpeta de cobertura para histórico
-      archiveArtifacts artifacts: 'coverage/**', fingerprint: true
+      // Publicamos la métrica en los logs para histórico
+      archiveArtifacts artifacts: '**/build.log', allowEmptyArchive: true
     }
   }
 }
+
