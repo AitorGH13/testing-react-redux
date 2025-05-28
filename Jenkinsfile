@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'NodeJS-18'
+    }
+
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 1, unit: 'HOURS')
@@ -21,10 +25,6 @@ pipeline {
         }
 
         stage('Build') {
-            // Anulamos CI=true para que react-scripts no falle por warnings
-            environment {
-                CI = 'false'
-            }
             steps {
                 echo '🔨 Generando build de producción…'
                 sh 'npm run build'
@@ -43,12 +43,13 @@ pipeline {
                 echo '🚀 Desplegando build en el contenedor de la asignatura…'
                 sshagent(['asignatura-ssh-key']) {
                     sh '''
-                      scp -o StrictHostKeyChecking=no -r build/* \
-                        admin@asignatura.example.com:/opt/asignatura/app/
-                      ssh -o StrictHostKeyChecking=no admin@asignatura.example.com "
-                        pkill -f 'npx serve -s /opt/asignatura/app' || true &&
-                        nohup npx serve -s /opt/asignatura/app > serve.log 2>&1 &
-                      "
+                        scp -o StrictHostKeyChecking=no -r build/* \
+                          admin@asignatura.example.com:/opt/asignatura/app/
+
+                        ssh -o StrictHostKeyChecking=no admin@asignatura.example.com "
+                          pkill -f 'npx serve -s /opt/asignatura/app' || true &&
+                          nohup npx serve -s /opt/asignatura/app > serve.log 2>&1 &
+                        "
                     '''
                 }
             }
@@ -59,31 +60,19 @@ pipeline {
                 echo '🐳 Desplegando contenedor Docker dentro del contenedor de la asignatura…'
                 sshagent(['asignatura-ssh-key']) {
                     sh '''
-                      ssh -o StrictHostKeyChecking=no admin@asignatura.example.com "
-                        cd /opt/asignatura/app &&
-                        cat > Dockerfile << 'EOF'
-                        FROM nginx:alpine
-                        COPY . /usr/share/nginx/html
-                        EOF &&
-                        docker build -t myapp:latest . &&
-                        docker rm -f myapp-container || true &&
-                        docker run -d --name myapp-container -p 8080:80 myapp:latest
-                      "
+                        ssh -o StrictHostKeyChecking=no admin@asignatura.example.com "
+                          cd /opt/asignatura/app &&
+                          cat > Dockerfile << 'EOF'
+                          FROM nginx:alpine
+                          COPY . /usr/share/nginx/html
+                          EOF &&
+                          docker build -t myapp:latest . &&
+                          docker rm -f myapp-container || true &&
+                          docker run -d --name myapp-container -p 8080:80 myapp:latest
+                        "
                     '''
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo '🎉 ¡Pipeline completado con éxito!'
-        }
-        failure {
-            echo '❌ Ha fallado alguna etapa.'
-        }
-        always {
-            echo '📦 Fin del pipeline.'
         }
     }
 }
