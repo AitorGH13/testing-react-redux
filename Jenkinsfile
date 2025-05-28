@@ -1,18 +1,14 @@
 pipeline {
     agent any
 
-    // Sólo ejecutar en la rama main
     triggers {
-        pollSCM('H/5 * * * *')  // opcional: escanea Git cada 5 minutos
+        pollSCM('H/5 * * * *') 
     }
 
     environment {
-        // Host y ruta en el contenedor de la asignatura
         ASSIGN_HOST       = 'asignatura.example.com'
         DEPLOY_PATH       = '/opt/asignatura/app'
-        // Credenciales SSH (ID en Jenkins Credentials)
         SSH_CREDENTIALS   = 'asignatura-ssh-key'
-        // Parámetros Docker
         DOCKER_IMAGE      = 'myapp:latest'
         DOCKER_CONTAINER  = 'myapp-container'
     }
@@ -34,7 +30,7 @@ pipeline {
             when { branch 'main' }
             steps {
                 echo '🔨 Compilando el proyecto...'
-                sh 'mvn clean package -DskipTests'    // ajusta según tu stack
+                sh 'mvn clean package -DskipTests'   
             }
         }
 
@@ -42,7 +38,7 @@ pipeline {
             when { branch 'main' }
             steps {
                 echo '✅ Ejecutando pruebas...'
-                sh 'mvn test'                        // o npm test, pytest, etc.
+                sh 'mvn test'                        
             }
             post {
                 always {
@@ -56,7 +52,6 @@ pipeline {
             steps {
                 echo "📦 Desplegando en ${ASSIGN_HOST}:${DEPLOY_PATH}"
                 sshagent([SSH_CREDENTIALS]) {
-                    // Copiamos el .jar/.war; ajusta la ruta del artefacto
                     sh """
                        scp -o StrictHostKeyChecking=no \
                          target/myapp.jar \
@@ -89,18 +84,6 @@ pipeline {
                     """
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo '🎉 Despliegue completo en main.'
-        }
-        failure {
-            echo '❌ Ha ocurrido un fallo en alguna etapa.'
-        }
-        always {
-            echo '📦 Fin del pipeline.'
         }
     }
 }
