@@ -1,11 +1,8 @@
 pipeline {
     agent any
 
-    triggers {
-        pollSCM('H/5 * * * *') 
-    }
-
     environment {
+        // Ajusta estos valores a tu entorno
         ASSIGN_HOST       = 'asignatura.example.com'
         DEPLOY_PATH       = '/opt/asignatura/app'
         SSH_CREDENTIALS   = 'asignatura-ssh-key'
@@ -20,25 +17,22 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            when { branch 'main' }
             steps {
                 checkout scm
             }
         }
 
         stage('Build') {
-            when { branch 'main' }
             steps {
                 echo '🔨 Compilando el proyecto...'
-                sh 'mvn clean package -DskipTests'   
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Testing') {
-            when { branch 'main' }
             steps {
                 echo '✅ Ejecutando pruebas...'
-                sh 'mvn test'                        
+                sh 'mvn test'
             }
             post {
                 always {
@@ -48,7 +42,6 @@ pipeline {
         }
 
         stage('Deploy to Assignment Container') {
-            when { branch 'main' }
             steps {
                 echo "📦 Desplegando en ${ASSIGN_HOST}:${DEPLOY_PATH}"
                 sshagent([SSH_CREDENTIALS]) {
@@ -66,25 +59,30 @@ pipeline {
         }
 
         stage('Deploy Docker inside Assignment Container') {
-            when { branch 'main' }
             steps {
-                echo "🐳 Desplegando Docker dentro de ${ASSIGN_HOST}"
+                echo "🐳 Desplegando Docker en ${ASSIGN_HOST}"
                 sshagent([SSH_CREDENTIALS]) {
                     sh """
                        ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} \\
                          "cd ${DEPLOY_PATH} && \
-                          # Reconstruir imagen Docker a partir del Dockerfile si procede
                           docker build -t ${DOCKER_IMAGE} . && \
-                          # Reemplazar contenedor existente
                           docker rm -f ${DOCKER_CONTAINER} || true && \
-                          docker run -d \\
-                            --name ${DOCKER_CONTAINER} \\
-                            -p 8080:80 \\
-                            ${DOCKER_IMAGE}"
+                          docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}"
                     """
                 }
             }
         }
     }
-}
 
+    post {
+        success {
+            echo '🎉 Despliegue completo en main.'
+        }
+        failure {
+            echo '❌ Ha ocurrido un fallo en alguna etapa.'
+        }
+        always {
+            echo '📦 Fin del pipeline.'
+        }
+    }
+}
