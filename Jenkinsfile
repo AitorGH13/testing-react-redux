@@ -16,7 +16,7 @@ pipeline {
         stage('Install') {
             steps {
                 echo '📦 Instalando dependencias…'
-                sh 'npm ci'
+                sh 'npm install'
             }
         }
 
@@ -84,4 +84,3 @@ pipeline {
         }
     }
 }
-
