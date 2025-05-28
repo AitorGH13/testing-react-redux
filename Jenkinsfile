@@ -1,13 +1,18 @@
 pipeline {
-    agent any
+    // Usamos un contenedor Docker con Node preinstalado
+    agent {
+        docker {
+            image 'node:16-alpine' 
+            args  '-u root:root'  // permisos para instalar
+        }
+    }
 
     environment {
-        // Ajusta estos valores a tu entorno
-        ASSIGN_HOST       = 'asignatura.example.com'
-        DEPLOY_PATH       = '/opt/asignatura/app'
-        SSH_CREDENTIALS   = 'asignatura-ssh-key'
-        DOCKER_IMAGE      = 'myapp:latest'
-        DOCKER_CONTAINER  = 'myapp-container'
+        ASSIGN_HOST      = 'asignatura.example.com'
+        DEPLOY_PATH      = '/opt/asignatura/app'
+        SSH_CREDENTIALS  = 'asignatura-ssh-key'
+        DOCKER_IMAGE     = 'myapp:latest'
+        DOCKER_CONTAINER = 'myapp-container'
     }
 
     options {
@@ -22,37 +27,41 @@ pipeline {
             }
         }
 
+        stage('Install') {
+            steps {
+                echo '📦 Instalar dependencias Node.js'
+                sh 'npm ci'
+            }
+        }
+
         stage('Build') {
             steps {
-                echo '🔨 Compilando el proyecto...'
-                sh 'mvn clean package -DskipTests'
+                echo '🔨 Compilando la app React'
+                sh 'npm run build'
             }
         }
 
         stage('Testing') {
             steps {
-                echo '✅ Ejecutando pruebas...'
-                sh 'mvn test'
+                echo '✅ Ejecutando tests con Jest'
+                // Asume que tu package.json tiene "test": "jest"
+                sh 'npm test -- --ci --reporters=default'
             }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
-                }
-            }
+            // Si quieres resultados JUnit, añade jest-junit y publica aquí:
+            // post { always { junit 'test-results.xml' } }
         }
 
         stage('Deploy to Assignment Container') {
             steps {
-                echo "📦 Desplegando en ${ASSIGN_HOST}:${DEPLOY_PATH}"
+                echo "🚀 Desplegando build en ${ASSIGN_HOST}:${DEPLOY_PATH}"
                 sshagent([SSH_CREDENTIALS]) {
                     sh """
-                       scp -o StrictHostKeyChecking=no \
-                         target/myapp.jar \
-                         ${ASSIGN_HOST}:${DEPLOY_PATH}/
-                       ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} \\
-                         "cd ${DEPLOY_PATH} && \
-                          pkill -f myapp.jar || true && \
-                          nohup java -jar myapp.jar > app.log 2>&1 &"
+                      scp -o StrictHostKeyChecking=no \
+                          -r build/* \
+                          ${ASSIGN_HOST}:${DEPLOY_PATH}/
+                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} \\
+                        "pkill -f 'serve -s ${DEPLOY_PATH}' || true && \
+                         nohup npx serve -s ${DEPLOY_PATH} > serve.log 2>&1 &"
                     """
                 }
             }
@@ -60,14 +69,18 @@ pipeline {
 
         stage('Deploy Docker inside Assignment Container') {
             steps {
-                echo "🐳 Desplegando Docker en ${ASSIGN_HOST}"
+                echo "🐳 Creando y lanzando contenedor Docker en ${ASSIGN_HOST}"
                 sshagent([SSH_CREDENTIALS]) {
                     sh """
-                       ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} \\
-                         "cd ${DEPLOY_PATH} && \
-                          docker build -t ${DOCKER_IMAGE} . && \
-                          docker rm -f ${DOCKER_CONTAINER} || true && \
-                          docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}"
+                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} \\
+                        "cd ${DEPLOY_PATH} && \
+                         cat > Dockerfile << 'EOF'
+                         FROM nginx:alpine
+                         COPY . /usr/share/nginx/html
+                         EOF && \
+                         docker build -t ${DOCKER_IMAGE} . && \
+                         docker rm -f ${DOCKER_CONTAINER} || true && \
+                         docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}"
                     """
                 }
             }
@@ -76,10 +89,10 @@ pipeline {
 
     post {
         success {
-            echo '🎉 Despliegue completo en main.'
+            echo '🎉 Pipeline completado correctamente.'
         }
         failure {
-            echo '❌ Ha ocurrido un fallo en alguna etapa.'
+            echo '❌ Ha fallado alguna etapa.'
         }
         always {
             echo '📦 Fin del pipeline.'
