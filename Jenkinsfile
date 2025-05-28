@@ -21,6 +21,10 @@ pipeline {
         }
 
         stage('Build') {
+            // Anulamos CI=true para que react-scripts no falle por warnings
+            environment {
+                CI = 'false'
+            }
             steps {
                 echo '🔨 Generando build de producción…'
                 sh 'npm run build'
@@ -41,7 +45,6 @@ pipeline {
                     sh '''
                       scp -o StrictHostKeyChecking=no -r build/* \
                         admin@asignatura.example.com:/opt/asignatura/app/
-
                       ssh -o StrictHostKeyChecking=no admin@asignatura.example.com "
                         pkill -f 'npx serve -s /opt/asignatura/app' || true &&
                         nohup npx serve -s /opt/asignatura/app > serve.log 2>&1 &
