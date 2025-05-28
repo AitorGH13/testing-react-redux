@@ -1,11 +1,5 @@
 pipeline {
-    // Usamos un contenedor Docker con Node preinstalado
-    agent {
-        docker {
-            image 'node:16-alpine' 
-            args  '-u root:root'  // permisos para instalar
-        }
-    }
+    agent any
 
     environment {
         ASSIGN_HOST      = 'asignatura.example.com'
@@ -29,59 +23,77 @@ pipeline {
 
         stage('Install') {
             steps {
-                echo '📦 Instalar dependencias Node.js'
-                sh 'npm ci'
+                echo '📦 Instalando dependencias con Docker…'
+                // Monta el workspace en /app y corre npm ci dentro de node:16
+                sh '''
+                  docker run --rm \
+                    -v "${PWD}":/app \
+                    -w /app \
+                    node:16-alpine \
+                    npm ci
+                '''
             }
         }
 
         stage('Build') {
             steps {
-                echo '🔨 Compilando la app React'
-                sh 'npm run build'
+                echo '🔨 Compilando la app con Docker…'
+                sh '''
+                  docker run --rm \
+                    -v "${PWD}":/app \
+                    -w /app \
+                    node:16-alpine \
+                    npm run build
+                '''
             }
         }
 
         stage('Testing') {
             steps {
-                echo '✅ Ejecutando tests con Jest'
-                // Asume que tu package.json tiene "test": "jest"
-                sh 'npm test -- --ci --reporters=default'
+                echo '✅ Ejecutando tests con Docker…'
+                sh '''
+                  docker run --rm \
+                    -v "${PWD}":/app \
+                    -w /app \
+                    node:16-alpine \
+                    npm test -- --ci --reporters=default
+                '''
             }
-            // Si quieres resultados JUnit, añade jest-junit y publica aquí:
-            // post { always { junit 'test-results.xml' } }
         }
 
         stage('Deploy to Assignment Container') {
             steps {
-                echo "🚀 Desplegando build en ${ASSIGN_HOST}:${DEPLOY_PATH}"
+                echo "🚀 Desplegando build a ${ASSIGN_HOST}:${DEPLOY_PATH}"
                 sshagent([SSH_CREDENTIALS]) {
-                    sh """
+                    sh '''
                       scp -o StrictHostKeyChecking=no \
-                          -r build/* \
-                          ${ASSIGN_HOST}:${DEPLOY_PATH}/
-                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} \\
-                        "pkill -f 'serve -s ${DEPLOY_PATH}' || true && \
-                         nohup npx serve -s ${DEPLOY_PATH} > serve.log 2>&1 &"
-                    """
+                        -r build/* \
+                        ${ASSIGN_HOST}:${DEPLOY_PATH}/
+                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} "
+                        pkill -f 'serve -s ${DEPLOY_PATH}' || true &&
+                        nohup npx serve -s ${DEPLOY_PATH} > serve.log 2>&1 &
+                      "
+                    '''
                 }
             }
         }
 
         stage('Deploy Docker inside Assignment Container') {
             steps {
-                echo "🐳 Creando y lanzando contenedor Docker en ${ASSIGN_HOST}"
+                echo "🐳 Armando y lanzando Docker en ${ASSIGN_HOST}"
                 sshagent([SSH_CREDENTIALS]) {
-                    sh """
-                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} \\
-                        "cd ${DEPLOY_PATH} && \
-                         cat > Dockerfile << 'EOF'
-                         FROM nginx:alpine
-                         COPY . /usr/share/nginx/html
-                         EOF && \
-                         docker build -t ${DOCKER_IMAGE} . && \
-                         docker rm -f ${DOCKER_CONTAINER} || true && \
-                         docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}"
-                    """
+                    sh '''
+                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} "
+                        cd ${DEPLOY_PATH} &&
+                        cat > Dockerfile << 'EOF'
+                        FROM nginx:alpine
+                        COPY . /usr/share/nginx/html
+                        EOF &&
+                        docker build -t ${DOCKER_IMAGE} . &&
+                        docker rm -f ${DOCKER_CONTAINER} || true &&
+                        docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}
+                      "
+                    '''
                 }
             }
         }
@@ -89,7 +101,7 @@ pipeline {
 
     post {
         success {
-            echo '🎉 Pipeline completado correctamente.'
+            echo '🎉 Pipeline finalizado correctamente.'
         }
         failure {
             echo '❌ Ha fallado alguna etapa.'
