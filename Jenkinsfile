@@ -1,14 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        ASSIGN_HOST      = 'asignatura.example.com'
-        DEPLOY_PATH      = '/opt/asignatura/app'
-        SSH_CREDENTIALS  = 'asignatura-ssh-key'
-        DOCKER_IMAGE     = 'myapp:latest'
-        DOCKER_CONTAINER = 'myapp-container'
-    }
-
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 1, unit: 'HOURS')
@@ -23,55 +15,36 @@ pipeline {
 
         stage('Install') {
             steps {
-                echo '📦 Instalando dependencias con Docker…'
-                // Monta el workspace en /app y corre npm ci dentro de node:16
-                sh '''
-                  docker run --rm \
-                    -v "${PWD}":/app \
-                    -w /app \
-                    node:16-alpine \
-                    npm ci
-                '''
+                echo '📦 Instalando dependencias…'
+                sh 'npm ci'
             }
         }
 
         stage('Build') {
             steps {
-                echo '🔨 Compilando la app con Docker…'
-                sh '''
-                  docker run --rm \
-                    -v "${PWD}":/app \
-                    -w /app \
-                    node:16-alpine \
-                    npm run build
-                '''
+                echo '🔨 Generando build de producción…'
+                sh 'npm run build'
             }
         }
 
-        stage('Testing') {
+        stage('Test') {
             steps {
-                echo '✅ Ejecutando tests con Docker…'
-                sh '''
-                  docker run --rm \
-                    -v "${PWD}":/app \
-                    -w /app \
-                    node:16-alpine \
-                    npm test -- --ci --reporters=default
-                '''
+                echo '✅ Ejecutando tests…'
+                sh 'npm test -- --ci'
             }
         }
 
         stage('Deploy to Assignment Container') {
             steps {
-                echo "🚀 Desplegando build a ${ASSIGN_HOST}:${DEPLOY_PATH}"
-                sshagent([SSH_CREDENTIALS]) {
+                echo '🚀 Desplegando build en el contenedor de la asignatura…'
+                sshagent(['asignatura-ssh-key']) {
                     sh '''
-                      scp -o StrictHostKeyChecking=no \
-                        -r build/* \
-                        ${ASSIGN_HOST}:${DEPLOY_PATH}/
-                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} "
-                        pkill -f 'serve -s ${DEPLOY_PATH}' || true &&
-                        nohup npx serve -s ${DEPLOY_PATH} > serve.log 2>&1 &
+                      scp -o StrictHostKeyChecking=no -r build/* \
+                        admin@asignatura.example.com:/opt/asignatura/app/
+
+                      ssh -o StrictHostKeyChecking=no admin@asignatura.example.com "
+                        pkill -f 'npx serve -s /opt/asignatura/app' || true &&
+                        nohup npx serve -s /opt/asignatura/app > serve.log 2>&1 &
                       "
                     '''
                 }
@@ -80,18 +53,18 @@ pipeline {
 
         stage('Deploy Docker inside Assignment Container') {
             steps {
-                echo "🐳 Armando y lanzando Docker en ${ASSIGN_HOST}"
-                sshagent([SSH_CREDENTIALS]) {
+                echo '🐳 Desplegando contenedor Docker dentro del contenedor de la asignatura…'
+                sshagent(['asignatura-ssh-key']) {
                     sh '''
-                      ssh -o StrictHostKeyChecking=no ${ASSIGN_HOST} "
-                        cd ${DEPLOY_PATH} &&
+                      ssh -o StrictHostKeyChecking=no admin@asignatura.example.com "
+                        cd /opt/asignatura/app &&
                         cat > Dockerfile << 'EOF'
                         FROM nginx:alpine
                         COPY . /usr/share/nginx/html
                         EOF &&
-                        docker build -t ${DOCKER_IMAGE} . &&
-                        docker rm -f ${DOCKER_CONTAINER} || true &&
-                        docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}
+                        docker build -t myapp:latest . &&
+                        docker rm -f myapp-container || true &&
+                        docker run -d --name myapp-container -p 8080:80 myapp:latest
                       "
                     '''
                 }
@@ -101,7 +74,7 @@ pipeline {
 
     post {
         success {
-            echo '🎉 Pipeline finalizado correctamente.'
+            echo '🎉 ¡Pipeline completado con éxito!'
         }
         failure {
             echo '❌ Ha fallado alguna etapa.'
@@ -111,3 +84,4 @@ pipeline {
         }
     }
 }
+
